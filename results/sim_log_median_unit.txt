@@ -1,0 +1,2 @@
+PASS: median_filter matched Python on all 2000 windows
+tb/tb_median.v:39: $finish called at 20135000 (1ps)

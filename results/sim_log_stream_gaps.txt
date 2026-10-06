@@ -1,0 +1,9 @@
+VCD info: dumpfile results/tb_median_stream.vcd opened for output.
+------------------------------------------------------------
+Denoised pixels : 15876 / 15876 received, 0 mismatches
+First output    : 355 clock cycles after the first input pixel
+Latency         : 5 clock cycles (last input -> last output)
+Frame time      : 21863 clock cycles for 16384 input pixels
+PASS: hardware median is bit-exact with the Python reference
+------------------------------------------------------------
+tb/tb_median_stream.v:78: $finish called at 218835000 (1ps)

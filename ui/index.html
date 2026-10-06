@@ -1,0 +1,239 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Median Sobel Bench</title>
+<meta name="description" content="Interactive demo of a pipelined FPGA median filter and Sobel edge detector.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Archivo:wdth,wght@62..125,400..800&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+<header class="top">
+  <div class="wrap top-inner">
+    <p class="project">Median filter and Sobel edge detection on an FPGA</p>
+    <nav aria-label="Sections">
+      <a href="#try">Try it</a>
+      <a href="#pixel">One pixel</a>
+      <a href="#clock">Clock by clock</a>
+      <a href="#progress">Progress</a>
+    </nav>
+  </div>
+</header>
+
+<main>
+  <!-- ============ PLAYGROUND ============ -->
+  <section id="try" class="wrap section">
+    <h1>Clean the noise first, then find the edges</h1>
+    <p class="lede">This page runs the same integer arithmetic as the project's Python model and Verilog hardware.
+      Pick an image, add salt-and-pepper noise, and compare edge detection with and without the median filter.</p>
+
+    <div class="controls" role="group" aria-label="Image settings">
+      <fieldset class="field">
+        <legend>Image</legend>
+        <div class="seg" id="imagePicker">
+          <button type="button" data-img="cameraman" aria-pressed="true">Cameraman</button>
+          <button type="button" data-img="coins" aria-pressed="false">Coins</button>
+          <button type="button" data-img="shapes" aria-pressed="false">Shapes</button>
+          <label class="upload" aria-pressed="false" id="uploadLabel">
+            Your image<input type="file" id="upload" accept="image/*">
+          </label>
+        </div>
+      </fieldset>
+      <div class="field">
+        <label for="noise">Noise <output id="noiseOut" for="noise">10%</output></label>
+        <input type="range" id="noise" min="0" max="30" step="1" value="10">
+      </div>
+      <div class="field">
+        <label for="thresh">Edge threshold <output id="threshOut" for="thresh">200</output></label>
+        <input type="range" id="thresh" min="40" max="600" step="10" value="200">
+      </div>
+      <div class="field field-btn">
+        <button type="button" id="reseed" class="btn">New noise pattern</button>
+      </div>
+    </div>
+
+    <div class="panels" id="panels">
+      <figure><canvas width="128" height="128" data-panel="clean"></canvas><figcaption>Original</figcaption></figure>
+      <figure><canvas width="128" height="128" data-panel="noisy"></canvas><figcaption>With noise</figcaption></figure>
+      <figure><canvas width="128" height="128" data-panel="median"></canvas><figcaption>After median filter</figcaption></figure>
+      <figure><canvas width="128" height="128" data-panel="edgeRaw"></canvas><figcaption>Edges, no filter</figcaption></figure>
+      <figure><canvas width="128" height="128" data-panel="edgeMed"></canvas><figcaption>Edges, median first</figcaption></figure>
+    </div>
+    <p class="hint">Click any pixel in these images to inspect it in the next section.</p>
+
+    <table class="metrics" aria-describedby="metricsNote">
+      <thead>
+        <tr><th scope="col">Measure</th><th scope="col">Edges, no filter</th><th scope="col">Edges, median first</th></tr>
+      </thead>
+      <tbody>
+        <tr><th scope="row">False edge pixels</th><td id="mFpRaw"></td><td id="mFpMed"></td></tr>
+        <tr><th scope="row">Edge accuracy (F1, 0 to 1)</th><td id="mF1Raw"></td><td id="mF1Med"></td></tr>
+        <tr><th scope="row">Image PSNR vs original</th><td id="mPsnrRaw"></td><td id="mPsnrMed"></td></tr>
+      </tbody>
+    </table>
+    <p class="note" id="metricsNote">The reference edges come from running Sobel on the original, noise-free image.
+      PSNR compares the noisy and the filtered image with the original; higher is closer.</p>
+  </section>
+
+  <!-- ============ PIXEL INSPECTOR ============ -->
+  <section id="pixel" class="wrap section">
+    <h2>Inside one pixel</h2>
+    <p class="lede" id="pixelIntro">Pixel <span id="pxPos"></span>. These are the exact steps the hardware takes for it.</p>
+
+    <ol class="steps" id="steps">
+      <li class="step">
+        <h3>Read the 3×3 window</h3>
+        <p>The pixel and its 8 neighbours from the noisy image.</p>
+        <div class="grid3" id="winNoisy"></div>
+      </li>
+      <li class="step">
+        <h3>Sort each row</h3>
+        <p>Each row of 3 becomes low, middle, high.</p>
+        <div class="rows" id="rowSort"></div>
+      </li>
+      <li class="step">
+        <h3>Combine the rows</h3>
+        <div class="combine" id="combine"></div>
+      </li>
+      <li class="step">
+        <h3>Take the median</h3>
+        <div id="medResult"></div>
+      </li>
+      <li class="step step-wide">
+        <h3>Sobel on the cleaned window</h3>
+        <p>The same position in the filtered image, multiplied by the two Sobel kernels.</p>
+        <div class="sobel" id="sobel"></div>
+      </li>
+    </ol>
+  </section>
+
+  <!-- ============ CLOCK BY CLOCK ============ -->
+  <section id="clock" class="wrap section">
+    <h2>Clock by clock</h2>
+    <p class="lede">The Phase 1 hardware, <code>median_stream.v</code>, takes in one pixel per clock.
+      Step the clock to watch the line buffers fill, the window slide across the image, and clean pixels come out.
+      The simulation below follows the Verilog register by register.</p>
+
+    <div class="sim-controls" role="group" aria-label="Clock controls">
+      <button type="button" class="btn" id="step1">Step 1 clock</button>
+      <button type="button" class="btn" id="stepRow">Step 1 row</button>
+      <button type="button" class="btn btn-primary" id="run">Run</button>
+      <label class="speed">Speed
+        <select id="speed">
+          <option value="slow">Slow, 6 clocks per second</option>
+          <option value="fast" selected>Fast, 1 row per frame</option>
+        </select>
+      </label>
+      <button type="button" class="btn" id="finish">Finish the frame</button>
+      <button type="button" class="btn btn-quiet" id="reset">Reset</button>
+    </div>
+
+    <div class="counters" aria-live="polite">
+      <p><span class="k">Clock</span> <span class="v" id="cClock">0</span></p>
+      <p><span class="k">Next input pixel</span> <span class="v" id="cIn">row 0, column 0</span></p>
+      <p><span class="k">Clean pixels out</span> <span class="v" id="cOut">0 of 15,876</span></p>
+      <p><span class="k">First clean pixel</span> <span class="v" id="cFirst">not yet</span></p>
+    </div>
+
+    <div class="bench">
+      <figure class="bench-img">
+        <canvas id="simIn" width="384" height="384"></canvas>
+        <figcaption>Input stream. Green rows are held in the line buffers; the gold box is the current 3×3 window.</figcaption>
+      </figure>
+      <figure class="bench-img">
+        <canvas id="simOut" width="384" height="384"></canvas>
+        <figcaption>Output stream from <code>median_filter</code>, written in as each pixel comes out.</figcaption>
+      </figure>
+      <div class="regs">
+        <h3>Registers right now</h3>
+        <div class="reg-block">
+          <p class="reg-title">Line buffers (128 pixels each)</p>
+          <canvas id="lbTop" width="384" height="14" aria-label="Line buffer holding the row two above"></canvas>
+          <canvas id="lbMid" width="384" height="14" aria-label="Line buffer holding the row above"></canvas>
+        </div>
+        <div class="reg-block">
+          <p class="reg-title">Window, w0 to w8</p>
+          <div class="grid3 small" id="rWin"></div>
+        </div>
+        <div class="reg-block">
+          <p class="reg-title">Median stage 1: low, middle, high per row</p>
+          <div class="rows small" id="rS1"></div>
+        </div>
+        <div class="reg-block">
+          <p class="reg-title">Median stage 2 and output</p>
+          <div class="kv" id="rS2"></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="analyzer">
+      <h3>Timing diagram, last clocks</h3>
+      <canvas id="timing" height="236" aria-label="Timing diagram of the most recent clock cycles"></canvas>
+    </div>
+  </section>
+
+  <!-- ============ PROGRESS ============ -->
+  <section id="progress" class="wrap section">
+    <h2>Project progress</h2>
+    <p class="lede">Phase 1 is complete and verified: the software model, the full software experiment, and the
+      median filter in hardware. Phase 2 moves edge detection into hardware for the final evaluation.</p>
+
+    <div class="phases">
+      <div class="phase">
+        <h3>Phase 1, done</h3>
+        <ol class="timeline">
+          <li>Python reference model with integer arithmetic that matches the hardware</li>
+          <li>Noise at 5%, 10% and 20% on three test images, with PSNR, SSIM, false edges and F1</li>
+          <li>Golden test vectors exported for the Verilog testbenches</li>
+          <li>Verilog <code>window_buffer</code> with two line buffers</li>
+          <li>Verilog <code>median_filter</code>, pipelined in 3 stages</li>
+          <li>Streaming top level <code>median_stream</code>, tested on a full image</li>
+        </ol>
+      </div>
+      <div class="phase phase-next">
+        <h3>Phase 2, planned</h3>
+        <ol class="timeline" start="7">
+          <li>Verilog <code>sobel_filter</code> with 11-bit signed gradients</li>
+          <li>Threshold stage and second window buffer</li>
+          <li>Full median to Sobel pipeline with an end-to-end testbench</li>
+          <li>Vivado synthesis for Artix-7: resources, timing and power</li>
+          <li>Latency, throughput and resource analysis of the full system</li>
+        </ol>
+      </div>
+    </div>
+
+    <h3 class="table-title">Phase 1 hardware checks (Icarus Verilog simulation)</h3>
+    <table class="metrics wide">
+      <thead><tr><th scope="col">Test</th><th scope="col">What was checked</th><th scope="col">Result</th></tr></thead>
+      <tbody>
+        <tr><th scope="row">Median unit test</th><td>2,000 random windows, including pure noise, ties, all black and all white</td><td>2,000 of 2,000 match Python</td></tr>
+        <tr><th scope="row">Streaming test</th><td>Noisy 128×128 cameraman, one pixel every clock</td><td>15,876 of 15,876 pixels match, 0 errors</td></tr>
+        <tr><th scope="row">Streaming with pauses</th><td>Same image with about 25% random idle clocks</td><td>15,876 of 15,876 pixels match, 0 errors</td></tr>
+        <tr><th scope="row">Throughput</th><td>Pixels processed per clock once full</td><td>1 per clock (16,384 pixels in 16,389 clocks)</td></tr>
+        <tr><th scope="row">Latency</th><td>Register stages from window to output</td><td>4 stages (window 1, median 3)</td></tr>
+      </tbody>
+    </table>
+  </section>
+</main>
+
+<footer class="foot">
+  <div class="wrap">
+    <h2>Run it yourself</h2>
+    <p>From the project folder, with Python and Icarus Verilog installed:</p>
+    <pre><code>pip install -r requirements.txt
+python python/run_experiments.py
+python python/make_vectors.py
+bash sim/run_sim.sh
+python python/compare_rtl.py</code></pre>
+    <p>This interface is <code>ui/index.html</code>. Open it in a browser; it needs no server.</p>
+  </div>
+</footer>
+
+<script src="images.js"></script>
+<script src="app.js"></script>
+</body>
+</html>
