@@ -112,7 +112,7 @@ rtl/      window_buffer.v, median_filter.v, median_stream.v,
 tb/       tb_median.v, tb_median_stream.v, tb_sobel.v, tb_top_pipeline.v
 sim/      run_sim.sh
 synth/    vivado_synth.tcl, vivado_project.tcl, constraints.xdc, yosys_synth.ys
-docs/     synopsis, final report, presentations, viva preparation
+docs/     synopsis, final report (.docx/.pdf), presentations, VIVA_PREP.md, figures
 ui/       index.html, style.css, app.js, images.js
 images/   original, noisy, denoised, edges (PNG)
 results/  metrics.csv, plots/, vectors/, simulation logs, synthesis/ (Vivado and Yosys reports)
