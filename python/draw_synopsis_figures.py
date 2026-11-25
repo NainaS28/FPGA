@@ -1,8 +1,13 @@
 """
-draw_synopsis_figures.py - Figures for the project synopsis (docs/figures/).
-  methodology_flow.png  : end-to-end flow of the work done
-  median_datapath.png   : 3-stage pipelined median filter datapath
-  waveform_median.png   : simulation waveform of median_stream (needs the VCD from sim/run_sim.sh)
+draw_synopsis_figures.py - Figures for the synopsis and final report (docs/figures/).
+  methodology_flow.png   : end-to-end flow of the work
+  median_datapath.png    : 3-stage pipelined median filter datapath
+  sobel_datapath.png     : 2-stage Sobel datapath and threshold
+  waveform_median.png    : simulation waveform of median_stream (Phase 1)
+  waveform_top.png       : simulation waveform of the full pipeline (top_pipeline)
+  hw_architecture.png    : median stage (Phase 1)
+  hw_architecture_full.png : complete top_pipeline (final design)
+The waveforms need the VCD files written by sim/run_sim.sh.
 Run from the project root:   python python/draw_synopsis_figures.py
 """
 import os, sys
@@ -47,16 +52,16 @@ def methodology():
     ax.text(0.2, y1 + h + 0.25, "Software reference model (Python, NumPy, OpenCV, scikit-image)", fontsize=11, weight="bold", color=INK)
     # hardware row
     hw = [("6. Test vectors", "noisy image + expected\nmedian as .hex files"),
-          ("7. Verilog RTL", "window_buffer\nmedian_filter, median_stream"),
+          ("7. Verilog RTL", "median stage + Sobel stage\n6 modules, top_pipeline"),
           ("8. Simulation", "Icarus Verilog testbenches\none pixel per clock"),
-          ("9. Compare", "RTL output vs Python\npixel by pixel"),
-          ("10. Results", "denoised image, waveform,\nlatency, throughput")]
+          ("9. Compare", "denoised pixels, magnitudes,\nedge bits vs Python"),
+          ("10. Vivado", "Artix-7 synthesis, place\nand route: area, Fmax, power")]
     y2 = 1.6
     for i, (t, s) in enumerate(hw):
         x = 0.2 + i * (w + 0.12)
         box(ax, x, y2, w, h, t, s, fc=GREY)
         if i: arrow(ax, x - 0.12, y2 + h / 2, x, y2 + h / 2)
-    ax.text(0.2, y2 - 0.35, "Hardware design and verification (Verilog HDL, Icarus Verilog, GTKWave)", fontsize=11, weight="bold", color=INK)
+    ax.text(0.2, y2 - 0.35, "Hardware design, verification and implementation (Verilog HDL, Icarus Verilog, Vivado)", fontsize=11, weight="bold", color=INK)
     # links between rows
     x3 = 0.2 + 2 * (w + 0.12) + w / 2
     ax.annotate("", xy=(0.2 + w / 2, y2 + h), xytext=(x3, y1),
@@ -109,7 +114,7 @@ def waveform():
     sys.path.insert(0, os.path.join(ROOT, "python"))
     vcd = os.path.join(ROOT, "results", "tb_median_stream.vcd")
     if not os.path.exists(vcd):
-        print("no VCD, run sim/run_sim.sh first"); return
+        print("no median_stream VCD (sim/run_sim.sh keeps only the top-level one); skipped"); return
     # minimal VCD reader for top-level testbench signals
     sigs = ["clk", "valid_in", "pix_in", "median_valid", "median_out"]
     t0, t1 = 2_560_000, 2_780_000
@@ -168,6 +173,103 @@ def hw_architecture():
     fig.tight_layout(); fig.savefig(os.path.join(OUT, "hw_architecture.png"), dpi=140); plt.close(fig)
 
 
+def read_vcd(vcd, sigs, t0, t1):
+    """Minimal VCD reader for top-level testbench signals between t0 and t1 (ps)."""
+    ids, cur, hist, depth = {}, {}, {n: [] for n in sigs}, 0
+    with open(vcd) as f:
+        for line in f:
+            s = line.split()
+            if not s: continue
+            if s[0] == "$scope": depth += 1
+            elif s[0] == "$upscope": depth -= 1
+            elif s[0] == "$var" and depth == 1 and s[4] in sigs and s[3] not in ids: ids[s[3]] = s[4]
+            elif s[0].startswith("#"):
+                t = int(s[0][1:])
+                if t > t1: break
+                if t >= t0:
+                    for n in sigs: hist[n].append((t, cur.get(n, 0)))
+            elif s[0][0] == "b" and len(s) == 2 and s[1] in ids:
+                v = s[0][1:]; cur[ids[s[1]]] = int(v, 2) if set(v) <= {"0", "1"} else 0
+            elif s[0][0] in "01xz" and s[0][1:] in ids:
+                cur[ids[s[0][1:]]] = 1 if s[0][0] == "1" else 0
+    return hist
+
+
+def waveform_top():
+    vcd = os.path.join(ROOT, "results", "tb_top_pipeline.vcd")
+    if not os.path.exists(vcd):
+        print("no VCD, run sim/run_sim.sh first"); return
+    sigs = ["clk", "valid_in", "pix_in", "median_valid", "median_out", "mag_out", "edge_valid", "edge_out"]
+    # a 26-clock window in the middle of the image where several edges are crossed
+    t0, t1 = 76_200_000, 76_460_000
+    hist = read_vcd(vcd, sigs, t0, t1)
+    fig, ax = plt.subplots(len(sigs), 1, figsize=(12, 6.2), sharex=True)
+    for a, n in zip(ax, sigs):
+        pts = hist[n]; ts = [(p[0] - t0) / 1000 for p in pts]; vs = [p[1] for p in pts]
+        if n in ("pix_in", "median_out"):
+            a.step(ts, vs, where="post", color=GREEN); a.set_ylim(-15, 270)
+        elif n == "mag_out":
+            a.step(ts, vs, where="post", color=GOLD); a.axhline(200, color="#999", lw=0.8, ls="--")
+            a.text(-12, 215, "T = 200", fontsize=8, ha="right", color="#777")
+        else:
+            a.step(ts, vs, where="post", color=INK if n == "clk" else GREEN); a.set_ylim(-0.3, 1.3); a.set_yticks([])
+        a.set_ylabel(n, rotation=0, ha="right", va="center", fontsize=9.5)
+        a.spines[["top", "right"]].set_visible(False)
+    ax[-1].set_xlabel("time (ns) from 76.20 us; clock period 10 ns (100 MHz in simulation)")
+    fig.suptitle("Simulation of top_pipeline: edge_out goes high where the Sobel magnitude reaches the threshold", fontsize=11)
+    fig.tight_layout(); fig.savefig(os.path.join(OUT, "waveform_top.png"), dpi=140); plt.close(fig)
+
+
+def sobel_datapath():
+    fig, ax = plt.subplots(figsize=(12.5, 4.6))
+    box(ax, 0.1, 1.2, 1.7, 2.0, "3x3 window", "w0 .. w8\nfrom second\nwindow_buffer", fc="#ffffff", ec="#777")
+    box(ax, 2.4, 2.45, 3.2, 1.05, "Gx = (w2+2w5+w8) - (w0+2w3+w6)", "adders; x2 = 1-bit left shift", fs=9.5)
+    box(ax, 2.4, 0.95, 3.2, 1.05, "Gy = (w6+2w7+w8) - (w0+2w1+w2)", "11-bit signed, -1020 .. +1020", fs=9.5)
+    box(ax, 6.3, 1.45, 2.4, 1.5, "|Gx| + |Gy|", "two's-complement abs\n+ 11-bit adder", fs=10.5)
+    box(ax, 9.3, 1.45, 1.6, 1.5, "mag >= T", "comparator\nT is an input", fs=10.5, fc="#ffffff")
+    box(ax, 11.3, 1.6, 1.1, 1.2, "edge", "1 bit\n+ valid", fc="#f6e6b8", ec=GOLD, fs=10)
+    arrow(ax, 1.8, 2.6, 2.4, 2.95); arrow(ax, 1.8, 1.8, 2.4, 1.45)
+    arrow(ax, 5.6, 2.95, 6.3, 2.4); arrow(ax, 5.6, 1.45, 6.3, 2.0)
+    arrow(ax, 8.7, 2.2, 9.3, 2.2); arrow(ax, 10.9, 2.2, 11.3, 2.2)
+    for x, lab in [(6.0, "stage 1 regs"), (9.0, "stage 2 regs"), (11.1, "threshold reg")]:
+        ax.plot([x, x], [0.55, 3.75], ls=(0, (4, 3)), color=GOLD, lw=1.2)
+        ax.text(x, 3.85, lab, ha="center", fontsize=8.5, color=GOLD)
+    ax.text(0.1, 0.1, "sobel_filter.v: 2 clocks, 8 adders/subtractors, no multipliers.  threshold.v: 1 clock.  "
+            "Largest possible magnitude for 8-bit pixels: 1530.", fontsize=9.5, color=INK)
+    ax.set_xlim(0, 12.6); ax.set_ylim(0, 4.1); ax.axis("off")
+    fig.tight_layout(); fig.savefig(os.path.join(OUT, "sobel_datapath.png"), dpi=140); plt.close(fig)
+
+
+def hw_architecture_full():
+    fig, ax = plt.subplots(figsize=(13, 4.4))
+    ax.add_patch(FancyBboxPatch((1.95, 0.55), 10.0, 3.15, boxstyle="round,pad=0.02,rounding_size=0.08",
+                                fc="none", ec=GREEN, lw=1.2, ls=(0, (5, 3))))
+    ax.text(2.1, 3.42, "top_pipeline.v", fontsize=10.5, color=GREEN, weight="bold")
+    box(ax, 0.05, 1.55, 1.6, 1.1, "Pixel in", "8-bit + valid\n1 pixel / clock", fc="#ffffff", ec="#777", fs=10)
+    ax.add_patch(FancyBboxPatch((2.15, 0.8), 4.2, 2.4, boxstyle="round,pad=0.02,rounding_size=0.06",
+                                fc="none", ec="#7a857e", lw=1.0))
+    ax.text(4.25, 2.98, "median_stream.v (Phase 1)", ha="center", fontsize=9, color="#55605a")
+    box(ax, 2.3, 1.15, 1.8, 1.5, "window_buffer", "2 line buffers\n128 px, 1 clk", fs=9.5)
+    box(ax, 4.35, 1.15, 1.85, 1.5, "median_filter", "row sort, combine\nmed3, 3 clk", fs=9.5)
+    box(ax, 6.75, 1.15, 1.8, 1.5, "window_buffer", "on denoised px\n126 px, 1 clk", fc="#dfe7f2", ec="#2e5a88", fs=9.5)
+    box(ax, 8.8, 1.15, 1.5, 1.5, "sobel_filter", "|Gx|+|Gy|\n2 clk", fc="#dfe7f2", ec="#2e5a88", fs=9.5)
+    box(ax, 10.5, 1.15, 1.3, 1.5, "threshold", "mag >= thr\n1 clk", fc="#dfe7f2", ec="#2e5a88", fs=9.5)
+    box(ax, 12.2, 1.55, 1.4, 1.1, "Edge out", "1 bit + valid\n124x124", fc="#f6e6b8", ec=GOLD, fs=10)
+    for x1, x2 in [(1.65, 2.3), (4.1, 4.35), (6.2, 6.75), (8.55, 8.8), (10.3, 10.5), (11.8, 12.2)]:
+        arrow(ax, x1, 1.9, x2, 1.9)
+    ax.annotate("", xy=(6.48, 0.2), xytext=(6.48, 1.9), arrowprops=dict(arrowstyle="-|>", lw=1.2, color=GREEN))
+    ax.text(6.6, 0.25, "median_out (126x126)", fontsize=8.5, color=GREEN)
+    ax.annotate("", xy=(10.4, 0.2), xytext=(10.4, 1.15), arrowprops=dict(arrowstyle="-|>", lw=1.0, color="#2e5a88"))
+    ax.text(10.5, 0.25, "mag_out", fontsize=8.5, color="#2e5a88")
+    ax.annotate("", xy=(11.15, 2.65), xytext=(11.15, 3.95), arrowprops=dict(arrowstyle="-|>", lw=1.0, color="#333"))
+    ax.text(11.25, 3.8, "thr[10:0]", fontsize=8.5)
+    ax.text(0.05, -0.35, "8 register stages in total (1 + 3 + 1 + 2 + 1). Throughput 1 pixel per clock. Green: Phase 1 median stage. Blue: Phase 2 Sobel stage.",
+            fontsize=9.5, color=INK)
+    ax.set_xlim(0, 13.7); ax.set_ylim(-0.5, 4.1); ax.axis("off")
+    fig.tight_layout(); fig.savefig(os.path.join(OUT, "hw_architecture_full.png"), dpi=140); plt.close(fig)
+
+
 if __name__ == "__main__":
     methodology(); datapath(); waveform(); hw_architecture()
+    waveform_top(); sobel_datapath(); hw_architecture_full()
     print("figures written to docs/figures/")
