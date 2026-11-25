@@ -14,7 +14,7 @@ Xilinx Artix-7 FPGA. The hardware is checked bit for bit against Python in simul
 | Phase | Scope | Status |
 |---|---|---|
 | Phase 1 (mid evaluation) | Python reference model, full software experiment, Verilog line buffer and median filter, streaming median hardware with testbenches, interactive interface | Done |
-| Phase 2 (final evaluation) | Verilog Sobel and threshold, full median to Sobel pipeline, end-to-end testbench, Vivado synthesis, latency, throughput and resource analysis | Planned |
+| Phase 2 (final evaluation) | Verilog Sobel and threshold, full median to Sobel pipeline, end-to-end testbench, Vivado synthesis, latency, throughput and resource analysis | Done |
 
 ## Phase 1 results
 
@@ -40,6 +40,30 @@ All 9 cases are in `results/metrics.csv`.
 
 ![Hardware vs Python](results/plots/rtl_vs_python_median.png)
 
+## Phase 2 results: complete hardware pipeline
+
+`rtl/top_pipeline.v` chains window buffer, median filter, a second window buffer,
+Sobel and threshold. Icarus Verilog simulation (`bash sim/run_sim.sh`):
+
+| Test | Result |
+|---|---|
+| Sobel unit test (`tb/tb_sobel.v`) | 2,000 / 2,000 windows match Python, including the largest possible magnitude (1530) |
+| Full pipeline, one pixel per clock (`tb/tb_top_pipeline.v`) | 15,876 denoised pixels, 15,376 Sobel magnitudes and 15,376 edge bits: 0 mismatches |
+| Full pipeline, about 25% random input pauses | 0 mismatches |
+| Two different frames back to back (cameraman, then coins), no reset | 31,752 denoised pixels and 30,752 edge bits: 0 mismatches |
+| Edge pixels found by hardware (cameraman, 10% noise) | 1,528, the same as the Python result |
+
+**Timing from simulation:** 1 pixel per clock (16,384 pixels in 16,393 clocks),
+8 register stages (window 1, median 3, window 1, Sobel 2, threshold 1), measured
+latency 9 clocks from last input to last edge bit, first edge bit 525 clocks after
+the first pixel (two image rows fill each line buffer).
+
+![Hardware vs Python edges](results/plots/rtl_vs_python_edges.png)
+
+**Resources, Artix-7 xc7a35t** (see `results/synthesis/`):
+
+VIVADO_TABLE
+
 ## Interactive interface
 
 Open `ui/index.html` in any browser. It needs no server or internet connection
@@ -62,19 +86,22 @@ Open `ui/index.html` in any browser. It needs no server or internet connection
 | Sobel | Standard 3×3 kernels, magnitude = \|Gx\| + \|Gy\| |
 | Threshold | 200 (edge if magnitude ≥ 200) |
 | Border | Only pixels with a full 3×3 window get an output: median output 126×126, edge output 124×124 |
-| Target FPGA | Artix-7 xc7a35tcpg236-1 (the Basys3 board's chip) |
+| Target FPGA | Artix-7 xc7a35tcpg236-1 (the Basys3 board's chip), 100 MHz clock target |
 
 ## Folder structure
 
 ```
 python/   dip.py (reference model), run_experiments.py, make_vectors.py,
           compare_rtl.py, draw_architecture.py, make_ui_images.py
-rtl/      window_buffer.v, median_filter.v, median_stream.v
-tb/       tb_median.v, tb_median_stream.v
+rtl/      window_buffer.v, median_filter.v, median_stream.v,
+          sobel_filter.v, threshold.v, top_pipeline.v
+tb/       tb_median.v, tb_median_stream.v, tb_sobel.v, tb_top_pipeline.v
 sim/      run_sim.sh
+synth/    vivado_synth.tcl, vivado_project.tcl, constraints.xdc, yosys_synth.ys
+docs/     synopsis, final report, presentations, viva preparation
 ui/       index.html, style.css, app.js, images.js
 images/   original, noisy, denoised, edges (PNG)
-results/  metrics.csv, plots/, vectors/, simulation logs
+results/  metrics.csv, plots/, vectors/, simulation logs, synthesis/ (Vivado and Yosys reports)
 ```
 
 ## How to run
@@ -87,14 +114,23 @@ python python/run_experiments.py    # software experiment and figures
 python python/make_vectors.py       # golden test vectors for Verilog
 bash sim/run_sim.sh                 # Verilog simulation (Git Bash on Windows)
 python python/compare_rtl.py        # hardware vs Python image
-gtkwave results/tb_median_stream.vcd
+gtkwave results/tb_top_pipeline.vcd
+```
+
+**Vivado** (free ML Standard edition, Artix-7 device support). From the project
+root, in the Vivado Tcl Shell:
+
+```tcl
+source synth/vivado_synth.tcl     # synthesis + place and route, reports in results/synthesis/vivado/
+source synth/vivado_project.tcl   # GUI project with schematic and simulation waveform (for the demo)
 ```
 
 Without Git Bash, run the commands inside `sim/run_sim.sh` one by one in the VS Code terminal.
 
 ## Limitations
 
-- No physical FPGA board is used; results come from simulation (and, in Phase 2, synthesis estimates).
+- No physical FPGA board is used. Results come from simulation and from Vivado
+  synthesis and place-and-route (out of context, so no pin assignment and no I/O power).
 - Images are read from files, not a live camera.
 - Border pixels without a full 3×3 window are not processed.
 - One fixed threshold is used for every image.

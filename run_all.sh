@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# run_all.sh - runs the whole Phase 1 flow end to end.
+# run_all.sh - runs the whole flow end to end (software, vectors, RTL simulation, figures).
 set -e
 cd "$(dirname "$0")"
 python3 python/run_experiments.py     # software experiment + figures

@@ -1,0 +1,13 @@
+------------------------------------------------------------
+Mode            : 2 frame(s), one pixel every clock
+Denoised pixels : 31752 / 31752 received, 0 mismatches
+Sobel magnitude : 15376 checked (frame 1), 0 mismatches
+Edge bits       : 30752 / 30752 received, 0 mismatches
+Edge pixels     : 4350 marked as edge
+First denoised  : 263 clocks after the first input pixel
+First edge bit  : 525 clocks after the first input pixel
+Latency         : 9 clocks (last input pixel -> last edge bit)
+Frame time      : 32777 clocks for 32768 input pixels
+PASS: full pipeline is bit-exact with the Python reference
+------------------------------------------------------------
+tb/tb_top_pipeline.v:105: $finish called at 328015000 (1ps)

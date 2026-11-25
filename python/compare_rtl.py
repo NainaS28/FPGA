@@ -39,6 +39,30 @@ def main():
     fig.savefig(os.path.join(ROOT, "results", "plots", "rtl_vs_python_median.png"), dpi=130)
     plt.close(fig)
 
+    # ---- Phase 2: edge map from the full hardware pipeline ----
+    edge_path = os.path.join(ROOT, "results", "rtl_edges.hex")
+    if not os.path.exists(edge_path):
+        return
+    py_edg = read_hex("results/vectors/expected_edges.hex", (H - 4, W - 4))
+    rtl_edg = read_hex("results/rtl_edges.hex", (H - 4, W - 4))
+    ediff = (py_edg != rtl_edg).astype(np.uint8)
+    n_ediff = int(ediff.sum())
+    print(f"Edge map: {n_ediff} differing pixels out of {py_edg.size}, "
+          f"{int(rtl_edg.sum())} edge pixels from hardware")
+
+    fig, ax = plt.subplots(1, 4, figsize=(14, 3.9))
+    items = [(noisy, "Input to hardware (10% noise)", 255),
+             (py_edg, "Python edges (median, Sobel)", 1),
+             (rtl_edg, f"Verilog edges: {int(rtl_edg.sum())} pixels", 1),
+             (ediff, f"Difference: {n_ediff} pixels", 1)]
+    for a, (im, t, vmax) in zip(ax, items):
+        a.imshow(im, cmap="gray", vmin=0, vmax=vmax, interpolation="nearest")
+        a.set_title(t, fontsize=11); a.axis("off")
+    fig.suptitle("Phase 2 check: full hardware pipeline vs Python reference (cameraman)", fontsize=12)
+    fig.tight_layout()
+    fig.savefig(os.path.join(ROOT, "results", "plots", "rtl_vs_python_edges.png"), dpi=130)
+    plt.close(fig)
+
 
 if __name__ == "__main__":
     main()

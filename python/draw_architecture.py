@@ -1,6 +1,6 @@
 """
 draw_architecture.py - Draws the hardware block diagram (results/plots/architecture.png).
-Solid blocks are built and tested (Phase 1). Dashed blocks are planned (Phase 2).
+All blocks are built and verified (Phase 1: median stage, Phase 2: Sobel stage).
 Run from the project root:   python python/draw_architecture.py
 """
 import os
@@ -10,16 +10,16 @@ import matplotlib.pyplot as plt
 from matplotlib.patches import FancyBboxPatch
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-DONE, PLANNED = "#d7e6dc", "#ffffff"
+DONE, PLANNED = "#d7e6dc", "#dfe7f2"
 
 blocks = [
     ("Pixel stream\nin", "8-bit, 1 px/clk\n+ valid", "#e9ece8", True),
     ("window_buffer", "2 line buffers\n+ 3x3 registers\n1 clk", DONE, True),
     ("median_filter", "row sort, column\ncombine, median of 3\n3 clk", DONE, True),
-    ("window_buffer", "second window\non clean pixels\n1 clk", PLANNED, False),
-    ("sobel_filter", "Gx, Gy, |Gx|+|Gy|\n2 clk", PLANNED, False),
-    ("threshold", "edge if >= T\n1 clk", PLANNED, False),
-    ("Edge stream\nout", "1-bit, 1 px/clk", "#ffffff", False),
+    ("window_buffer", "second window\non clean pixels\n1 clk", PLANNED, True),
+    ("sobel_filter", "Gx, Gy, |Gx|+|Gy|\n2 clk", PLANNED, True),
+    ("threshold", "edge if >= T\n1 clk", PLANNED, True),
+    ("Edge stream\nout", "1-bit, 1 px/clk", "#e9ece8", True),
 ]
 
 fig, ax = plt.subplots(figsize=(15, 3.4))
@@ -39,7 +39,7 @@ for i, (name, sub, col, done) in enumerate(blocks):
 mx = 2 * (bw + gap) + bw / 2
 ax.annotate("denoised pixel out", xy=(mx, y), xytext=(mx, -0.45), ha="center", fontsize=9,
             arrowprops=dict(arrowstyle="<|-", lw=1.2, color="#1e6b47"), color="#1e6b47")
-ax.text(0, 2.25, "Solid: built and tested in Phase 1 (median_stream.v).   Dashed: planned for Phase 2.",
+ax.text(0, 2.25, "top_pipeline.v   Green: Phase 1 median stage (median_stream.v).   Blue: Phase 2 Sobel stage.   Total: 8 register stages, 1 pixel per clock.",
         fontsize=10.5, color="#14231b")
 ax.set_xlim(-0.2, len(blocks) * (bw + gap)); ax.set_ylim(-0.8, 2.5); ax.axis("off")
 fig.tight_layout()

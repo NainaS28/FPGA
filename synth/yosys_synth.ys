@@ -1,0 +1,6 @@
+# yosys_synth.ys - free resource estimate for Artix-7 (Xilinx 7-series cells).
+# Run from the project root:  yosys -s synth/yosys_synth.ys
+# (Vivado gives the official numbers; this is a cross-check that needs no licence.)
+read_verilog rtl/window_buffer.v rtl/median_filter.v rtl/median_stream.v rtl/sobel_filter.v rtl/threshold.v rtl/top_pipeline.v
+synth_xilinx -family xc7 -top top_pipeline -flatten
+tee -o results/synthesis/yosys/utilization.txt stat

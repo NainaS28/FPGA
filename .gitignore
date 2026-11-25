@@ -2,3 +2,9 @@ __pycache__/
 sim/build/
 *.vcd
 .vscode/
+vivado_proj/
+.Xil/
+vivado*.jou
+vivado*.log
+*.str
+results/synthesis/vivado/*.dcp

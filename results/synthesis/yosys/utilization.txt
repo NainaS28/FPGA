@@ -1,0 +1,29 @@
+
+8. Printing statistics.
+
+=== top_pipeline ===
+
+        +----------Local Count, excluding submodules.
+        | 
+     1197 wires
+     2404 wire bits
+       70 public wires
+      394 public wire bits
+       11 ports
+       45 port bits
+     1195 cells
+        6   $scopeinfo
+        1   BUFG
+       60   CARRY4
+      334   FDRE
+       22   IBUF
+       25   INV
+       34   LUT2
+      194   LUT3
+      135   LUT4
+      225   LUT5
+      108   LUT6
+       23   OBUF
+       16   RAM128X1S
+       12   RAM64M
+

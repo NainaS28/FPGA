@@ -1,0 +1,9 @@
+------------------------------------------------------------
+Mode            : 1 frame(s), random input gaps ON
+Denoised pixels : 15876 / 15876 received, 0 mismatches
+Sobel magnitude : 15376 checked (frame 1), 0 mismatches
+Edge bits       : 15376 / 15376 received, 0 mismatches
+Edge pixels     : 1528 marked as edge
+PASS: full pipeline is bit-exact with the Python reference
+------------------------------------------------------------
+tb/tb_top_pipeline.v:105: $finish called at 218935000 (1ps)
