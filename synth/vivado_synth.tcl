@@ -48,12 +48,19 @@ proc count {filter} {
 }
 set wns     [get_property SLACK [get_timing_paths -max_paths 1 -nworst 1 -setup]]
 set fmax    [expr {1000.0 / ($period - $wns)}]
-set luts    [count {PRIMITIVE_GROUP == LUT}]
-set lutram  [count {REF_NAME =~ RAM* && REF_NAME !~ RAMB*}]
-set srls    [count {REF_NAME =~ SRL*}]
-set ffs     [count {PRIMITIVE_GROUP == FLOP_LATCH}]
-set brams   [count {REF_NAME =~ RAMB*}]
-set dsps    [count {REF_NAME =~ DSP48*}]
+# official numbers from the utilisation report (LUTs after LUT combining)
+set urep [report_utilization -return_string]
+proc util_row {rep name} {
+    if {[regexp "\\|\\s*$name\\s*\\|\\s*(\\d+)\\s*\\|\\s*\\d+\\s*\\|\\s*\\d+\\s*\\|\\s*(\\d+)\\s*\\|\\s*(\\S+)\\s*\\|" $rep -> used avail pct]} {
+        return "$used of $avail ($pct%)"
+    }
+    return "?"
+}
+set luts    [util_row $urep {Slice LUTs}]
+set lutmem  [util_row $urep {LUT as Memory}]
+set ffs     [util_row $urep {Slice Registers}]
+set brams   [util_row $urep {Block RAM Tile}]
+set dsps    [util_row $urep {DSPs}]
 set carry   [count {REF_NAME == CARRY4}]
 set ptotal "?"; set pdyn "?"
 set prep [report_power -return_string]
@@ -66,8 +73,8 @@ puts $f "Clock target          : $period ns ([expr {1000.0/$period}] MHz)"
 puts $f "Worst negative slack  : $wns ns"
 puts $f [format "Maximum clock (Fmax)  : %.1f MHz" $fmax]
 puts $f [format "Throughput at Fmax    : %.1f Mpixel/s, %.0f frames/s at 128x128" $fmax [expr {$fmax*1e6/16384.0}]]
-puts $f "LUT cells (logic)     : $luts"
-puts $f "LUTRAM / SRL cells    : $lutram / $srls"
+puts $f "Slice LUTs            : $luts"
+puts $f "  of which LUT memory : $lutmem"
 puts $f "Flip-flops            : $ffs"
 puts $f "CARRY4                : $carry"
 puts $f "Block RAM             : $brams"
