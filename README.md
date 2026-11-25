@@ -62,7 +62,21 @@ the first pixel (two image rows fill each line buffer).
 
 **Resources, Artix-7 xc7a35t** (see `results/synthesis/`):
 
-VIVADO_TABLE
+| Resource / measure | Vivado 2025.2, after place and route | Yosys estimate |
+|---|---|---|
+| Slice LUTs | 474 (2.28%): 442 logic + 32 distributed RAM | 721 logic + 80 distributed RAM |
+| Flip-flops | 303 (0.73%) | 334 |
+| Block RAM | 1 tile (2 x RAMB18, 2%) | 0 |
+| DSP slices | 0 | 0 |
+| Timing at 100 MHz | met, worst slack +1.659 ns, hold +0.098 ns | not reported |
+| Maximum clock (Fmax) | about 119.9 MHz (7,317 frames/s at 128x128) | not reported |
+| Total on-chip power | 0.089 W (0.069 static, 0.021 dynamic) | not reported |
+
+Implementation is out of context (no pins, no board), part xc7a35tcpg236-1.
+The critical path runs from a line-buffer block RAM through the first median
+stage (6 logic levels, 8.29 ns). Full reports are in `results/synthesis/vivado/`.
+
+![Vivado device view](docs/figures/vivado_device.png)
 
 ## Interactive interface
 

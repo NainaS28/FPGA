@@ -1,0 +1,13 @@
+Vivado 2025.2  part xc7a35tcpg236-1  top top_pipeline
+Clock target          : 10.0 ns (100.0 MHz)
+Worst negative slack  : 1.659 ns
+Maximum clock (Fmax)  : 119.9 MHz
+Throughput at Fmax    : 119.9 Mpixel/s, 7317 frames/s at 128x128
+LUT cells (logic)     : 661
+LUTRAM / SRL cells    : 56 / 0
+Flip-flops            : 303
+CARRY4                : 65
+Block RAM             : 2
+DSP slices            : 0
+Total on-chip power   : 0.089 W  (dynamic 0.021 W)
+See utilization_impl.txt and power_impl.txt for the official tables.
