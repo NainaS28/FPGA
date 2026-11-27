@@ -1,4 +1,3 @@
-VCD info: dumpfile results/tb_top_pipeline.vcd opened for output.
 ------------------------------------------------------------
 Mode            : 1 frame(s), one pixel every clock
 Denoised pixels : 15876 / 15876 received, 0 mismatches
@@ -11,4 +10,3 @@ Latency         : 9 clocks (last input pixel -> last edge bit)
 Frame time      : 16393 clocks for 16384 input pixels
 PASS: full pipeline is bit-exact with the Python reference
 ------------------------------------------------------------
-tb/tb_top_pipeline.v:105: $finish called at 164175000 (1ps)

@@ -43,7 +43,7 @@ All 9 cases are in `results/metrics.csv`.
 ## Phase 2 results: complete hardware pipeline
 
 `rtl/top_pipeline.v` chains window buffer, median filter, a second window buffer,
-Sobel and threshold. Icarus Verilog simulation (`bash sim/run_sim.sh`):
+Sobel and threshold. Icarus Verilog simulation (`python sim/simulate.py`):
 
 | Test | Result |
 |---|---|
@@ -78,17 +78,21 @@ stage (6 logic levels, 8.29 ns). Full reports are in `results/synthesis/vivado/`
 
 ![Vivado device view](docs/figures/vivado_device.png)
 
-## Interactive interface
+## Project website
 
-Open `ui/index.html` in any browser. It needs no server or internet connection
-(only the web fonts need internet; without them it falls back to system fonts).
+`website/FPGA_Median_Sobel_Edge_Detection.html` is the project's website: one
+self-contained page that opens in any browser. `run_project.py` rebuilds it from
+the latest results each time.
 
 - **Try it:** pick a test image or your own, set the noise level and edge threshold,
   and compare edges with and without the median filter, with live metrics.
 - **One pixel:** click any pixel to see the 3×3 window, the hardware median steps and the Sobel arithmetic.
-- **Clock by clock:** step the Phase 1 hardware one clock at a time and watch the line
-  buffers, window registers, pipeline stages and a timing diagram. This simulation
-  produces exactly the same output as the Verilog testbench.
+- **Clock by clock:** step the median stage one clock at a time and watch the line
+  buffers, window registers, pipeline stages and a timing diagram.
+- **Verified:** hardware vs Python edge maps, the test table, the waveform and the
+  simulation logs of the latest run.
+- **On the FPGA:** Vivado resources, timing, power, schematic and placed design.
+- **Code:** the Verilog of the top level, Sobel and threshold modules.
 
 ## Design choices
 
@@ -105,41 +109,51 @@ Open `ui/index.html` in any browser. It needs no server or internet connection
 ## Folder structure
 
 ```
+run_project.py  runs everything (see below);  run.bat / run.sh  launchers
 python/   dip.py (reference model), run_experiments.py, make_vectors.py,
-          compare_rtl.py, draw_architecture.py, make_ui_images.py
+          compare_rtl.py, draw_architecture.py, draw_synopsis_figures.py, make_ui_images.py
 rtl/      window_buffer.v, median_filter.v, median_stream.v,
           sobel_filter.v, threshold.v, top_pipeline.v
 tb/       tb_median.v, tb_median_stream.v, tb_sobel.v, tb_top_pipeline.v
-sim/      run_sim.sh
+sim/      simulate.py (Icarus Verilog or Vivado xsim), run_sim.sh
 synth/    vivado_synth.tcl, vivado_project.tcl, constraints.xdc, yosys_synth.ys
-docs/     synopsis, final report (.docx/.pdf), presentations, VIVA_PREP.md, figures
-ui/       index.html, style.css, app.js, images.js
+ui/       website source: index.html, style.css, app.js, images.js, build_site.py
+website/  FPGA_Median_Sobel_Edge_Detection.html (built website)
+docs/     synopsis, report, presentations, VIVA_PREP.md, figures
 images/   original, noisy, denoised, edges (PNG)
 results/  metrics.csv, plots/, vectors/, simulation logs, synthesis/ (Vivado and Yosys reports)
 ```
 
 ## How to run
 
-Requirements: Python 3 (`pip install -r requirements.txt`) and Icarus Verilog
-(the Windows installer includes GTKWave).
+Needs Python 3 and a Verilog simulator: Icarus Verilog, or the simulator that
+comes with AMD Vivado (found automatically). Missing Python packages are
+installed on the first run.
+
+**In VS Code:** open this folder, then press **Ctrl+Shift+B** (or Terminal →
+Run Build Task). With the Python extension installed, **F5** does the same.
+On Windows you can also double-click `run.bat`.
+
+**From a terminal:**
 
 ```bash
-python python/run_experiments.py    # software experiment and figures
-python python/make_vectors.py       # golden test vectors for Verilog
-bash sim/run_sim.sh                 # Verilog simulation (Git Bash on Windows)
-python python/compare_rtl.py        # hardware vs Python image
-gtkwave results/tb_top_pipeline.vcd
+python run_project.py               # everything, then opens the website
+python run_project.py --sim vivado  # use the Vivado simulator
+python sim/simulate.py              # Verilog testbenches only
 ```
 
-**Vivado** (free ML Standard edition, Artix-7 device support). From the project
-root, in the Vivado Tcl Shell:
+The run: (1) checks packages, (2) runs the software experiment on 3 images × 3
+noise levels, (3) exports golden test vectors, (4) simulates all Verilog
+testbenches and checks them against Python, (5) compares the hardware output
+images and redraws the figures, (6) builds the website and opens it.
+
+**Vivado** (free ML Standard edition, Artix-7 device support), from the project
+root in the Vivado Tcl Console:
 
 ```tcl
 source synth/vivado_synth.tcl     # synthesis + place and route, reports in results/synthesis/vivado/
-source synth/vivado_project.tcl   # GUI project with schematic and simulation waveform (for the demo)
+source synth/vivado_project.tcl   # GUI project with schematic and behavioural simulation
 ```
-
-Without Git Bash, run the commands inside `sim/run_sim.sh` one by one in the VS Code terminal.
 
 ## Limitations
 

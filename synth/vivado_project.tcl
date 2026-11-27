@@ -1,5 +1,5 @@
 # ============================================================================
-# vivado_project.tcl - creates a Vivado GUI project for the demo and viva.
+# vivado_project.tcl - creates a Vivado GUI project for the presentation and viva.
 #
 # In Vivado: Tools -> Run Tcl Script... -> synth/vivado_project.tcl
 # (or in the Tcl console:  cd C:/path/to/FPGA ; source synth/vivado_project.tcl)

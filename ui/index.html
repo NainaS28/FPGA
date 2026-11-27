@@ -3,8 +3,8 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Median Sobel Bench</title>
-<meta name="description" content="Interactive demo of a pipelined FPGA median filter and Sobel edge detector.">
+<title>FPGA Median–Sobel Edge Detection</title>
+<meta name="description" content="FPGA Median–Sobel Edge Detection: a pipelined median filter and Sobel edge detector in Verilog, verified and implemented on an Artix-7 FPGA.">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Archivo:wdth,wght@62..125,400..800&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
@@ -14,12 +14,14 @@
 
 <header class="top">
   <div class="wrap top-inner">
-    <p class="project">Median filter and Sobel edge detection on an FPGA</p>
+    <p class="project">FPGA Median–Sobel Edge Detection</p>
     <nav aria-label="Sections">
       <a href="#try">Try it</a>
       <a href="#pixel">One pixel</a>
       <a href="#clock">Clock by clock</a>
-      <a href="#progress">Progress</a>
+      <a href="#verify">Verified</a>
+      <a href="#fpga">On the FPGA</a>
+      <a href="#code">Code</a>
     </nav>
   </div>
 </header>
@@ -114,7 +116,7 @@
   <!-- ============ CLOCK BY CLOCK ============ -->
   <section id="clock" class="wrap section">
     <h2>Clock by clock</h2>
-    <p class="lede">The Phase 1 hardware, <code>median_stream.v</code>, takes in one pixel per clock.
+    <p class="lede">The noise-removal stage of the hardware, <code>median_stream.v</code>, takes in one pixel per clock.
       Step the clock to watch the line buffers fill, the window slide across the image, and clean pixels come out.
       The simulation below follows the Verilog register by register.</p>
 
@@ -176,47 +178,237 @@
     </div>
   </section>
 
-  <!-- ============ PROGRESS ============ -->
-  <section id="progress" class="wrap section">
-    <h2>Project progress</h2>
-    <p class="lede">Phase 1 is complete and verified: the software model, the full software experiment, and the
-      median filter in hardware. Phase 2 moves edge detection into hardware for the final evaluation.</p>
+  <!-- ============ VERIFIED ============ -->
+  <section id="verify" class="wrap section">
+    <h2>The hardware is verified: bit-exact with Python</h2>
+    <p class="lede">The complete Verilog pipeline (window buffer, median, second window buffer, Sobel, threshold)
+      was simulated in Icarus Verilog. Every denoised pixel, every Sobel magnitude and every edge bit was compared
+      automatically with the Python model.</p>
 
-    <div class="phases">
-      <div class="phase">
-        <h3>Phase 1, done</h3>
-        <ol class="timeline">
-          <li>Python reference model with integer arithmetic that matches the hardware</li>
-          <li>Noise at 5%, 10% and 20% on three test images, with PSNR, SSIM, false edges and F1</li>
-          <li>Golden test vectors exported for the Verilog testbenches</li>
-          <li>Verilog <code>window_buffer</code> with two line buffers</li>
-          <li>Verilog <code>median_filter</code>, pipelined in 3 stages</li>
-          <li>Streaming top level <code>median_stream</code>, tested on a full image</li>
-        </ol>
-      </div>
-      <div class="phase phase-next">
-        <h3>Phase 2, planned</h3>
-        <ol class="timeline" start="7">
-          <li>Verilog <code>sobel_filter</code> with 11-bit signed gradients</li>
-          <li>Threshold stage and second window buffer</li>
-          <li>Full median to Sobel pipeline with an end-to-end testbench</li>
-          <li>Vivado synthesis for Artix-7: resources, timing and power</li>
-          <li>Latency, throughput and resource analysis of the full system</li>
-        </ol>
-      </div>
+    <div class="stats">
+      <div class="stat"><b>0</b><span>mismatches in more than 60,000 checked outputs</span></div>
+      <div class="stat"><b>1,528</b><span>edge pixels from the hardware, the same as Python</span></div>
+      <div class="stat"><b>1 px / clock</b><span>16,384 pixels in 16,393 clocks</span></div>
+      <div class="stat"><b>8 stages</b><span>latency: window 1 + median 3 + window 1 + Sobel 2 + threshold 1</span></div>
     </div>
 
-    <h3 class="table-title">Phase 1 hardware checks (Icarus Verilog simulation)</h3>
+    <figure class="shot"><img src="../results/plots/rtl_vs_python_edges.png" alt="Hardware edges compared with Python edges; the difference image is completely black">
+      <figcaption>Noisy input, Python edge map, Verilog edge map and their difference. The difference is completely black: 0 differing pixels.</figcaption></figure>
+
     <table class="metrics wide">
       <thead><tr><th scope="col">Test</th><th scope="col">What was checked</th><th scope="col">Result</th></tr></thead>
       <tbody>
-        <tr><th scope="row">Median unit test</th><td>2,000 random windows, including pure noise, ties, all black and all white</td><td>2,000 of 2,000 match Python</td></tr>
-        <tr><th scope="row">Streaming test</th><td>Noisy 128×128 cameraman, one pixel every clock</td><td>15,876 of 15,876 pixels match, 0 errors</td></tr>
-        <tr><th scope="row">Streaming with pauses</th><td>Same image with about 25% random idle clocks</td><td>15,876 of 15,876 pixels match, 0 errors</td></tr>
-        <tr><th scope="row">Throughput</th><td>Pixels processed per clock once full</td><td>1 per clock (16,384 pixels in 16,389 clocks)</td></tr>
-        <tr><th scope="row">Latency</th><td>Register stages from window to output</td><td>4 stages (window 1, median 3)</td></tr>
+        <tr><th scope="row">Median unit test</th><td>2,000 random windows: pure noise, ties, all black, all white</td><td>2,000 of 2,000 match</td></tr>
+        <tr><th scope="row">Sobel unit test</th><td>2,000 windows, including the largest possible magnitude (1530)</td><td>2,000 of 2,000 match</td></tr>
+        <tr><th scope="row">Full pipeline</th><td>Noisy cameraman, one pixel every clock</td><td>15,876 pixels, 15,376 magnitudes, 15,376 edge bits: 0 errors</td></tr>
+        <tr><th scope="row">With input pauses</th><td>About 25% random idle clocks</td><td>0 errors</td></tr>
+        <tr><th scope="row">Two frames back to back</th><td>Cameraman, then coins, no reset</td><td>31,752 pixels, 30,752 edge bits: 0 errors</td></tr>
       </tbody>
     </table>
+
+    <figure class="shot"><img src="../docs/figures/waveform_top.png" alt="Simulation waveform of top_pipeline">
+      <figcaption>Simulation waveform of <code>top_pipeline</code>: <code>edge_out</code> goes high one clock after <code>mag_out</code> reaches the threshold of 200.</figcaption></figure>
+
+    <h3 class="table-title">Simulation logs</h3>
+    <p class="runinfo"><!--RUNINFO--></p>
+    <div class="logs">
+      <pre><code><!--LOG:sim_log_top.txt--></code></pre>
+      <pre><code><!--LOG:sim_log_top_2frames.txt--></code></pre>
+      <pre><code><!--LOG:sim_log_sobel_unit.txt--></code></pre>
+      <pre><code><!--LOG:sim_log_median_unit.txt--></code></pre>
+    </div>
+  </section>
+
+  <!-- ============ FPGA ============ -->
+  <section id="fpga" class="wrap section">
+    <h2>On the FPGA: Vivado 2025.2, Artix-7 xc7a35t</h2>
+    <p class="lede">The verified design was synthesised, placed and routed in Vivado for the Artix-7 chip on the
+      Basys3 board, with a 100 MHz clock target. Timing is met with room to spare.</p>
+
+    <div class="stats">
+      <div class="stat"><b>474</b><span>LUTs, 2.3% of the chip (303 flip-flops, 0.7%)</span></div>
+      <div class="stat"><b>119.9 MHz</b><span>maximum clock; timing met at 100 MHz, slack +1.659 ns</span></div>
+      <div class="stat"><b>0 DSP</b><span>no multipliers; 1 block RAM tile for line buffers</span></div>
+      <div class="stat"><b>0.089 W</b><span>total on-chip power (0.021 W dynamic)</span></div>
+    </div>
+
+    <div class="pair">
+      <figure class="shot"><img src="../docs/figures/vivado_schematic.png" alt="Vivado RTL schematic of top_pipeline">
+        <figcaption>Vivado RTL schematic: median stage, second window buffer, Sobel, threshold.</figcaption></figure>
+      <figure class="shot narrow"><img src="../docs/figures/vivado_device.png" alt="Placed and routed design on the Artix-7">
+        <figcaption>Placed and routed on the chip. Blue: input window buffer, green: median, yellow: second window buffer, red: Sobel, magenta: threshold.</figcaption></figure>
+    </div>
+
+    <table class="metrics wide">
+      <thead><tr><th scope="col">Resource</th><th scope="col">Used</th><th scope="col">Available</th><th scope="col">Utilisation</th></tr></thead>
+      <tbody>
+        <tr><th scope="row">Slice LUTs</th><td>474 (442 logic + 32 memory)</td><td>20,800</td><td>2.28%</td></tr>
+        <tr><th scope="row">Flip-flops</th><td>303</td><td>41,600</td><td>0.73%</td></tr>
+        <tr><th scope="row">Block RAM tiles</th><td>1 (2 &times; RAMB18)</td><td>50</td><td>2.00%</td></tr>
+        <tr><th scope="row">DSP slices</th><td>0</td><td>90</td><td>0%</td></tr>
+        <tr><th scope="row">Worst setup slack (10 ns clock)</th><td colspan="3">+1.659 ns, met; Fmax = 1 / (10 &minus; 1.659) ns &asymp; 119.9 MHz &asymp; 7,300 frames/s at 128&times;128</td></tr>
+        <tr><th scope="row">Critical path</th><td colspan="3">Line-buffer block RAM &rarr; first median stage, 8.29 ns, 6 logic levels</td></tr>
+      </tbody>
+    </table>
+
+    <h3 class="table-title">Run it live in Vivado (about 4 minutes)</h3>
+    <ol class="vsteps">
+      <li>Open <b>Vivado 2025.2</b> and click the <b>Tcl Console</b> tab at the bottom.</li>
+      <li>Type these two lines, pressing Enter after each:
+        <pre><code>cd {C:/Users/Naina Sehgal/Desktop/FPGA}
+source synth/vivado_synth.tcl</code></pre></li>
+      <li>When it finishes, the <b>Device</b> view shows the design on the chip, and the console prints the summary.</li>
+      <li><b>Reports &rarr; Report Utilization</b>, <b>Reports &rarr; Timing &rarr; Report Timing Summary</b> and <b>Reports &rarr; Report Power</b> show the numbers above.</li>
+      <li>In the <b>Netlist</b> panel, right-click <code>top_pipeline</code> &rarr; <b>Schematic</b> to show the blocks.</li>
+    </ol>
+  </section>
+
+  <!-- ============ CODE ============ -->
+  <section id="code" class="wrap section">
+    <h2>The Verilog</h2>
+    <p class="lede">Six modules. The top level joins them; Sobel needs only adders and 1-bit shifts, so the design uses no multipliers.</p>
+    <div class="tabs" role="tablist">
+      <button type="button" role="tab" aria-selected="true" data-code="c-top">top_pipeline.v</button>
+      <button type="button" role="tab" aria-selected="false" data-code="c-sob">sobel_filter.v</button>
+      <button type="button" role="tab" aria-selected="false" data-code="c-thr">threshold.v</button>
+    </div>
+    <pre class="codebox" id="c-top"><code>// ============================================================================
+// top_pipeline.v
+// Phase 2 top level: the complete streaming image-processing pipeline.
+//
+//   pixel -&gt; window_buffer -&gt; median_filter -&gt; window_buffer -&gt; sobel_filter
+//         -&gt; threshold -&gt; edge bit
+//
+// Input : one 8-bit pixel per clock (when valid_in = 1), raster order,
+//         WIDTH x HEIGHT image.
+// Output: denoised pixels, (WIDTH-2) x (HEIGHT-2)        (median_out)
+//         edge bits,       (WIDTH-4) x (HEIGHT-4)        (edge_out)
+// Latency through each block (register stages):
+//   window 1 + median 3 + window 1 + Sobel 2 + threshold 1 = 8 stages
+// Throughput: 1 pixel per clock. Input pauses (valid_in = 0) are allowed.
+// ============================================================================
+module top_pipeline #(
+    parameter WIDTH  = 128,
+    parameter HEIGHT = 128
+)(
+    input  wire        clk,
+    input  wire        rst,
+    input  wire [7:0]  pix_in,
+    input  wire        valid_in,
+    input  wire [10:0] thr,          // edge threshold (default 200)
+    output wire [7:0]  median_out,
+    output wire        median_valid,
+    output wire [10:0] mag_out,
+    output wire        mag_valid,
+    output wire        edge_out,
+    output wire        edge_valid
+);
+    // ---- Stage A: denoise ----
+    median_stream #(.WIDTH(WIDTH), .HEIGHT(HEIGHT)) u_med (
+        .clk(clk), .rst(rst), .pix_in(pix_in), .valid_in(valid_in),
+        .median_out(median_out), .median_valid(median_valid));
+
+    // ---- Stage B: 3x3 window on the denoised (WIDTH-2)x(HEIGHT-2) image ----
+    wire [7:0] s0, s1, s2, s3, s4, s5, s6, s7, s8;
+    wire       swin_valid;
+    window_buffer #(.WIDTH(WIDTH-2), .HEIGHT(HEIGHT-2)) u_win2 (
+        .clk(clk), .rst(rst), .pix_in(median_out), .valid_in(median_valid),
+        .w0(s0), .w1(s1), .w2(s2), .w3(s3), .w4(s4), .w5(s5), .w6(s6), .w7(s7), .w8(s8),
+        .valid_out(swin_valid));
+
+    // ---- Stage C: Sobel magnitude ----
+    sobel_filter u_sobel (
+        .clk(clk), .rst(rst),
+        .w0(s0), .w1(s1), .w2(s2), .w3(s3), .w4(s4), .w5(s5), .w6(s6), .w7(s7), .w8(s8),
+        .valid_in(swin_valid), .mag(mag_out), .valid_out(mag_valid));
+
+    // ---- Stage D: threshold -&gt; edge bit ----
+    threshold u_thr (
+        .clk(clk), .rst(rst), .mag(mag_out), .thr(thr), .valid_in(mag_valid),
+        .edge_out(edge_out), .valid_out(edge_valid));
+endmodule
+</code></pre>
+    <pre class="codebox" id="c-sob" hidden><code>// ============================================================================
+// sobel_filter.v
+// 3x3 Sobel gradient magnitude, pipelined in 2 stages
+// (latency = 2 clocks, throughput = 1 window per clock).
+//
+//        Gx kernel          Gy kernel          window
+//      -1  0 +1           -1 -2 -1          w0 w1 w2
+//      -2  0 +2            0  0  0          w3 w4 w5
+//      -1  0 +1           +1 +2 +1          w6 w7 w8
+//
+//   Stage 1: Gx = (w2 + 2*w5 + w8) - (w0 + 2*w3 + w6)
+//            Gy = (w6 + 2*w7 + w8) - (w0 + 2*w1 + w2)
+//            (multiply by 2 is a 1-bit left shift: no multipliers needed)
+//   Stage 2: magnitude = |Gx| + |Gy|      (11 bits; largest possible value is
+//            1530, e.g. Gx = 1020 and Gy = 510)
+//
+// Same integer arithmetic as python/dip.py: sobel_mag().
+// ============================================================================
+module sobel_filter (
+    input  wire        clk,
+    input  wire        rst,
+    input  wire [7:0]  w0, w1, w2, w3, w4, w5, w6, w7, w8,
+    input  wire        valid_in,
+    output reg  [10:0] mag,
+    output reg         valid_out
+);
+    // Each weighted column/row sum is at most 4*255 = 1020 -&gt; 10 bits unsigned
+    wire [9:0] gx_pos = {2&#x27;b00, w2} + {1&#x27;b0, w5, 1&#x27;b0} + {2&#x27;b00, w8};
+    wire [9:0] gx_neg = {2&#x27;b00, w0} + {1&#x27;b0, w3, 1&#x27;b0} + {2&#x27;b00, w6};
+    wire [9:0] gy_pos = {2&#x27;b00, w6} + {1&#x27;b0, w7, 1&#x27;b0} + {2&#x27;b00, w8};
+    wire [9:0] gy_neg = {2&#x27;b00, w0} + {1&#x27;b0, w1, 1&#x27;b0} + {2&#x27;b00, w2};
+
+    // ---- Stage 1: signed gradients (-1020 .. +1020 -&gt; 11-bit signed) ----
+    reg signed [10:0] gx, gy;
+    reg               v1;
+
+    // ---- Stage 2: absolute values and sum ----
+    wire [9:0] abs_gx = gx[10] ? -gx[9:0] : gx[9:0];
+    wire [9:0] abs_gy = gy[10] ? -gy[9:0] : gy[9:0];
+
+    always @(posedge clk) begin
+        if (rst) begin
+            v1 &lt;= 1&#x27;b0; valid_out &lt;= 1&#x27;b0;
+        end else begin
+            gx &lt;= $signed({1&#x27;b0, gx_pos}) - $signed({1&#x27;b0, gx_neg});
+            gy &lt;= $signed({1&#x27;b0, gy_pos}) - $signed({1&#x27;b0, gy_neg});
+            v1 &lt;= valid_in;
+
+            mag       &lt;= {1&#x27;b0, abs_gx} + {1&#x27;b0, abs_gy};
+            valid_out &lt;= v1;
+        end
+    end
+endmodule
+</code></pre>
+    <pre class="codebox" id="c-thr" hidden><code>// ============================================================================
+// threshold.v
+// Turns the Sobel magnitude into a 1-bit edge decision (1 clock of latency).
+//     edge = 1  when  mag &gt;= thr
+// The threshold is an input, so it can be changed at run time
+// (the project default is 200, the same as python/dip.py: THRESHOLD).
+// ============================================================================
+module threshold (
+    input  wire        clk,
+    input  wire        rst,
+    input  wire [10:0] mag,
+    input  wire [10:0] thr,
+    input  wire        valid_in,
+    output reg         edge_out,
+    output reg         valid_out
+);
+    always @(posedge clk) begin
+        if (rst) begin
+            valid_out &lt;= 1&#x27;b0;
+            edge_out  &lt;= 1&#x27;b0;
+        end else begin
+            edge_out  &lt;= (mag &gt;= thr);
+            valid_out &lt;= valid_in;
+        end
+    end
+endmodule
+</code></pre>
   </section>
 </main>
 
@@ -229,11 +421,20 @@ python python/run_experiments.py
 python python/make_vectors.py
 bash sim/run_sim.sh
 python python/compare_rtl.py</code></pre>
-    <p>This interface is <code>ui/index.html</code>. Open it in a browser; it needs no server.</p>
+    <p>FPGA implementation, in the Vivado Tcl Console from the project folder: <code>source synth/vivado_synth.tcl</code>.
+      Code, reports and the final report are at github.com/NainaS28/FPGA.</p>
   </div>
 </footer>
 
 <script src="images.js"></script>
 <script src="app.js"></script>
+<script>
+document.querySelectorAll('.tabs button').forEach(function (b) {
+  b.addEventListener('click', function () {
+    document.querySelectorAll('.tabs button').forEach(function (x) { x.setAttribute('aria-selected', x === b ? 'true' : 'false'); });
+    document.querySelectorAll('.codebox').forEach(function (c) { c.hidden = c.id !== b.dataset.code; });
+  });
+});
+</script>
 </body>
 </html>

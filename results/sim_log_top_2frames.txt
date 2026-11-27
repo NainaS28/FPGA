@@ -10,4 +10,3 @@ Latency         : 9 clocks (last input pixel -> last edge bit)
 Frame time      : 32777 clocks for 32768 input pixels
 PASS: full pipeline is bit-exact with the Python reference
 ------------------------------------------------------------
-tb/tb_top_pipeline.v:105: $finish called at 328015000 (1ps)

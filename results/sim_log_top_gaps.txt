@@ -6,4 +6,3 @@ Edge bits       : 15376 / 15376 received, 0 mismatches
 Edge pixels     : 1528 marked as edge
 PASS: full pipeline is bit-exact with the Python reference
 ------------------------------------------------------------
-tb/tb_top_pipeline.v:105: $finish called at 218935000 (1ps)

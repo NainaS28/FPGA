@@ -73,9 +73,10 @@ Salt-and-pepper noise makes Sobel mark thousands of fake edges. A 3×3 median fi
 
 29. **What would you do next?** Run it on a Basys3 with a camera (OV7670) and VGA output. Add an adaptive median for high noise. Add non-maximum suppression for thin edges (towards Canny). Support larger and colour images, and process several pixels per clock.
 
-## Demo plan (about 5 minutes)
+## Showing the working project (about 5 minutes)
 
-1. **Interface:** open `ui/index.html`. Pick cameraman, set noise to 10%, and show Sobel only vs median then Sobel. Click a pixel to show the 3×3 window and the median steps.
-2. **Simulation:** run `bash sim/run_sim.sh` (or show `results/sim_log_top.txt`) and point to the PASS lines and 0 mismatches. Show the waveform (`results/tb_top_pipeline.vcd` in GTKWave, or the figure in the report).
-3. **Hardware vs Python:** show `results/plots/rtl_vs_python_edges.png` (difference image all black).
-4. **Vivado:** open `results/synthesis/vivado/top_pipeline_routed.dcp` (File → Checkpoint → Open). Show the device view, Report Utilization and Report Timing Summary (WNS +1.659 ns). Or run `source synth/vivado_project.tcl` to show the schematic and the behavioural simulation.
+1. **Run it:** open the project folder in VS Code and press **Ctrl+Shift+B**. The terminal shows the software results table, then every Verilog testbench with PASS and 0 mismatches, then the hardware-vs-Python comparison (0 differing pixels). The website opens at the end.
+2. **Website, Try it:** cameraman at 10% noise; compare "Edges, no filter" with "Edges, median first", then raise the noise to 20%.
+3. **Website, One pixel / Clock by clock:** click a pixel to show the median steps; step the hardware clock by clock.
+4. **Website, Verified:** the difference image is completely black; the simulation logs are from the run you just did (date and time shown).
+5. **Website, On the FPGA:** Vivado resources, timing and power. To show Vivado live, run `source synth/vivado_synth.tcl` in the Vivado Tcl Console from the project folder (about 4 minutes).

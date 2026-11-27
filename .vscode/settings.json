@@ -1,0 +1,4 @@
+{
+  "files.associations": { "*.v": "verilog" },
+  "files.exclude": { "**/__pycache__": true, "sim/build": true, "xsim.dir": true, "**/*.pb": true, "**/*.jou": true }
+}

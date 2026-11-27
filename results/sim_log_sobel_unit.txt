@@ -3,4 +3,3 @@ Sobel unit test : 2000 / 2000 windows checked, 0 mismatches
 Largest magnitude seen: 1530 (largest possible for 8-bit pixels: 1530)
 PASS: sobel_filter matches the Python model
 ------------------------------------------------------------
-tb/tb_sobel.v:43: $finish called at 20085000 (1ps)

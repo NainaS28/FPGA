@@ -70,7 +70,7 @@ def methodology():
     x9 = 0.2 + 3 * (w + 0.12) + w / 2
     ax.annotate("", xy=(x9, y2 + h), xytext=(x3 + 0.3, y1),
                 arrowprops=dict(arrowstyle="-|>", lw=1.3, color=GOLD, connectionstyle="arc3,rad=-0.15"))
-    ax.text(0.2, 0.6, "11. Interactive interface (HTML, JavaScript): live demo of the same arithmetic, pixel inspector, and a clock-by-clock view of the hardware",
+    ax.text(0.2, 0.6, "11. Interactive interface (HTML, JavaScript): live view of the same arithmetic, pixel inspector, and a clock-by-clock view of the hardware",
             fontsize=10, color=INK)
     ax.set_xlim(0, 12.5); ax.set_ylim(0.3, 6.1); ax.axis("off")
     fig.tight_layout(); fig.savefig(os.path.join(OUT, "methodology_flow.png"), dpi=140); plt.close(fig)

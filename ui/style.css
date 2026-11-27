@@ -267,3 +267,30 @@ figcaption { margin-top: var(--s2); font-size: 0.92rem; font-weight: 560; }
   background: var(--sheet); border-radius: var(--radius);
   font-size: 0.9rem; line-height: 1.6;
 }
+
+/* ---- final results sections ---- */
+.stats { margin-top: var(--s5); display: grid; gap: var(--s4); grid-template-columns: repeat(auto-fit, minmax(190px, 1fr)); }
+.stat { background: var(--sheet); border: 1px solid var(--rule); border-radius: var(--radius); padding: var(--s4); }
+.stat b { display: block; font-size: 1.9rem; font-weight: 750; color: var(--mask); line-height: 1.1; font-variant-numeric: tabular-nums; }
+.stat span { display: block; margin-top: var(--s2); color: var(--muted); font-size: 0.92rem; }
+.shot { margin: var(--s6) 0 0; }
+.shot img { display: block; width: 100%; height: auto; background: #fff; border: 1px solid var(--rule); border-radius: var(--radius); }
+.shot figcaption { margin-top: var(--s2); color: var(--muted); font-size: 0.92rem; max-width: var(--measure); }
+.pair { display: grid; gap: var(--s5); grid-template-columns: 1fr; align-items: start; }
+@media (min-width: 900px) { .pair { grid-template-columns: 2.2fr 1fr; } }
+.pair .shot.narrow img { max-width: 340px; background: #000; }
+.logs { display: grid; gap: var(--s4); grid-template-columns: 1fr; margin-top: var(--s3); }
+@media (min-width: 1000px) { .logs { grid-template-columns: 1fr 1fr; } }
+.logs pre { white-space: pre-wrap; word-break: break-word; }
+.logs pre, .vsteps pre, .codebox { margin: 0; background: var(--sheet); border: 1px solid var(--rule); border-radius: var(--radius);
+  padding: var(--s3); overflow-x: auto; font-family: var(--mono); font-size: 0.8rem; line-height: 1.45; }
+.vsteps { display: block; margin-top: var(--s3); padding-left: 1.4em; max-width: var(--measure); }
+.vsteps li { margin-bottom: var(--s3); }
+.vsteps pre { margin-top: var(--s2); }
+.tabs { margin-top: var(--s5); display: flex; gap: var(--s2); flex-wrap: wrap; }
+.tabs button { font: inherit; font-family: var(--mono); font-size: 0.88rem; padding: var(--s2) var(--s3); border: 1px solid var(--rule);
+  border-radius: var(--radius); background: var(--sheet); color: var(--ink); cursor: pointer; }
+.tabs button[aria-selected="true"] { background: var(--mask); border-color: var(--mask); color: var(--on-mask); }
+.codebox { margin-top: var(--s3); max-height: 520px; overflow: auto; }
+.runinfo { margin-top: var(--s2); color: var(--muted); font-size: 0.92rem; }
+.runinfo b { color: var(--ink); }
